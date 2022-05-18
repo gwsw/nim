@@ -1,0 +1,252 @@
+<!doctype html>
+<meta charset="UTF-8">
+<html>
+<head>
+<title>Nim</title>
+</head>
+<body onload="main()">
+<canvas id="canvas" width="1" height="1" style="font-family:Arial"></canvas>
+<script>
+
+// --------------------------------------------------------------------
+// Globals
+
+const config = {
+    color_outline  : "ff0000",
+};
+
+var _game = null;
+
+// --------------------------------------------------------------------
+class Color {
+    constructor(hex) {
+        this.hex_str = hex;
+    }
+    hex() {
+        return this.hex_str;
+    }
+    jstring() {
+        return "#" + this.hex_str;
+    }
+    get_comp(comp) {
+        return parseInt(this.hex_str.substr(comp*2, 2), 16);
+    }
+    darker(mult) {
+        return new Color(hex2(this.get_comp(0)*mult) + hex2(this.get_comp(1)*mult) + hex2(this.get_comp(2)*mult));
+    }
+    opposite() {
+        return new Color(hex2(255-this.get_comp(0)) + hex2(255-this.get_comp(1)) + hex2(255-this.get_comp(2)));
+    }
+    contrast() {
+        const bright = this.get_comp(0) + this.get_comp(1) + this.get_comp(2);
+        return new Color((bright > (3*128)) ? "000000" : "ffffff");
+    }
+};
+// --------------------------------------------------------------------
+class Graphics {
+    constructor(ctx, font_size) {
+        this.ctx = ctx;
+        ctx.font = Math.floor(font_size).toString()+"px sans-serif";
+        this.font_height = font_size;
+    }
+    clear(color) {
+        const canvas = this.ctx.canvas;
+        const w = canvas.width;
+        const h = canvas.height;
+        this.ctx.clearRect(0, 0, w, h);
+        this.draw_rect(0, 0, w, h, color);
+    }
+    draw_rect(x, y, w, h, color) {
+        if (color != undefined && color != null) this.ctx.fillStyle = color.jstring();
+        this.ctx.fillRect(x, y, w, h);
+    }
+    draw_centered_rect(cx, cy, w, h, color) {
+        this.draw_rect(cx - w/2, cy - h/2, w, h, color);
+    }
+    draw_outline(x, y, w, h, xb, yb, color) {
+        this.draw_rect(x,      y,       w-xb,   yb,   color);
+        this.draw_rect(x+w-xb, y,       xb,     h-yb, color);
+        this.draw_rect(x+xb,   y+h-yb,  w-xb,   yb,   color);
+        this.draw_rect(x,      y+yb,    xb,     h-yb, color);
+    }
+    draw_centered_outline(cx, cy, w, h, xb, yb, color) {
+        this.draw_outline(cx - w/2, cy - h/2, w, h, xb, yb, color);
+    }
+    draw_outlined_rect(x, y, w, h, xb, yb, bg_color, border_color) {
+        this.draw_rect(x+xb, y+yb, w-2*xb, h-2*yb, bg_color);
+        this.draw_outline(x, y, w, h, xb, yb, border_color);
+    }
+    draw_circle(x, y, r, color) {
+        this.ctx.beginPath();
+        this.ctx.fillStyle = color.jstring();
+        this.ctx.arc(x, y, r, 0, 2*Math.PI);
+        this.ctx.fill();
+    }
+    draw_text(x, y, text, color) {
+        this.ctx.fillStyle = color.jstring();
+        this.ctx.fillText(text, x, y+this.font_height);
+    }
+    measure_text(text) {
+        let max_width = 0;
+        let num_lines = 0;
+        for (let line of text.split("\n")) {
+            const text_size = this.ctx.measureText(line);
+            if (text_size.width > max_width) max_width = text_size.width;
+            ++num_lines;
+        }
+        return { width: max_width, height: this.font_height * num_lines };
+    }
+    draw_centered_text(x, y, w, text, color) {
+        const text_size = this.measure_text(text);
+        const nx = x + (w - text_size.width) / 2;
+        if (nx > x) x = nx;
+        this.draw_text(x, y, text, color);
+        return text_size;
+    }
+    static end_word(text, p) {
+        for (; p < text.length; ++p) {
+            if (text.substr(p,1) != " ") break;
+        }
+        for (; p < text.length; ++p) {
+            if (text.substr(p,1) == " " || text.substr(p,1) == "\n") break;
+        }
+        return p;
+    }
+    split_text(text, width) {
+        let lines = [];
+        let line = 0;
+        for (;;) {
+            // Skip spaces.
+            while (text.substr(line,1) == " ")
+                ++line;
+            let end_line = line;
+            // Output line starts here; step thru words.
+            for (;;) {
+                if (end_line >= text.length) {
+                    if (end_line > line) lines.push(text.substr(line, end_line-line));
+                    return lines;
+                }
+                const newline = (text.substr(end_line,1) == "\n");
+                let e = -1;
+                if (!newline) e = Graphics.end_word(text, end_line);
+                if (newline || this.measure_text(text.substr(line, e-line)).width >= width) {
+                    if (end_line == line && !newline) { // we must break a word
+                        while (e > line && this.measure_text(text.substr(line, e-line)).width >= width)
+                            e = e - 1;
+                        end_line = e;
+                    }
+                    lines.push(text.substr(line, end_line-line));
+                    line = end_line;
+                    if (newline) ++line;
+                    break;
+                }
+                end_line = e;
+            }
+        }
+    }
+    draw_paragraph(msg, x, y, w, color, center = false, list_char = "", dryrun = false) {
+if (w < 5)
+console.log("too narrow! x="+x.toString()+", y="+y.toString()+", w="+w.toString());
+        const lines = this.split_text(msg, w);
+        const line_h = this.font_height;
+        const list_indent = (list_char.length == 0) ? 0 : this.measure_text(list_char).width;
+        for (let i = 0; i < lines.length; ++i) {
+            let line = lines[i];
+            let tx = x;
+            let center_line = center;
+            if (line.substr(0,1) == "\t") {
+                center_line = true;
+                line = line.substr(1);
+            }
+            if (center_line) {
+                const tw = this.measure_text(line).width;
+                tx += Math.floor((w - tw) / 2);
+            }
+            if (list_char.length > 0 && line.substr(0,list_char.length) != list_char)
+                tx += list_indent;
+            if (!dryrun) this.draw_text(tx, y, line, color);
+            y += line_h;
+        }
+        return { w: w, h: lines.length * line_h };
+    }
+    draw_vcentered_paragraph(msg, x, y, w, h, color, center = false, list_char = "") {
+        const msg_size = this.measure_text(msg);
+        y += (h - msg_size.height) / 2;
+        return this.draw_paragraph(msg, x, y, w, color, center, list_char);
+    }
+}; // class Graphics
+
+// --------------------------------------------------------------------
+
+class Game {
+    constructor(gfx) {
+        this.gfx = gfx;
+    }
+    run() {
+        this.draw();
+    }
+    event_mouse(down, x, y) {
+    }
+    draw() {
+        const canvas = this.gfx.ctx.canvas;
+        const w = canvas.width;
+        const h = canvas.height;
+        const b = canvas.height / 20;
+        this.gfx.draw_outline(0, 0, w, h, b, b, config.color_outline);
+    }
+    static _event_mousedown(e) {
+        if (_game != null) _game.event_mouse(true, e.offsetX, e.offsetY);
+    }
+    static _event_mouseup(e) {
+        if (_game != null) _game.event_mouse(false, e.offsetX, e.offsetY);
+    }
+}; // class Game
+
+// --------------------------------------------------------------------
+
+function now() {
+    return performance.now();
+}
+
+function munge_config() {
+    for (const [key,value] of Object.entries(config)) {
+        if (key.substr(0,6) == "color_")
+            config[key] = new Color(config[key]);
+    }
+}
+
+function el(name) {
+    return document.getElementById(name);
+}
+
+function randu(n) {
+    return Math.floor(Math.random() * n);
+}
+
+function canvas_size(name, w, h) {
+    const canvas = el(name);
+    canvas.width = w;
+    canvas.height = h;
+    return canvas;
+}
+
+function canvas_resize() {
+    const s = 20;
+    return canvas_size("canvas", window.innerWidth - s, window.innerHeight - s);
+}
+
+function main() {
+    munge_config();
+    const canvas = canvas_resize();
+    const gfx = new Graphics(canvas.getContext("2d"), canvas.height*.026);
+    _game = new Game(gfx);
+    document.addEventListener('mousedown', Game._event_mousedown);
+    document.addEventListener('mouseup', Game._event_mouseup);
+    window.addEventListener('resize', canvas_resize, false);
+    _game.run();
+}
+
+</script>
+</body>
+</html>
+
