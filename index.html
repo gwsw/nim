@@ -5,14 +5,45 @@
 <title>Nim</title>
 </head>
 <body onload="main()">
+<p id="status" style="font-size:2em; text-align:center"></p>
 <canvas id="canvas" width="1" height="1" style="font-family:Arial"></canvas>
+<div id="post_canvas" style="font-size:2em; text-align:center">
+<table width="100%">
+<tr> <td colspan="4"> <button type="button" id="go_btn" onclick="click_go()" disabled style="height:4em">Remove selected stones</button> </td>
+<tr> <td style="text-align:right"> Rows: </td> <td> <select id="rows" onchange="change_rows()">
+  <option value="1">1</option>
+  <option value="2">2</option>
+  <option value="3">3</option>
+  <option value="4">4</option>
+  <option value="5">5</option>
+  <option value="6">6</option>
+  <option value="7">7</option>
+</select> </td>
+<td rowspan="2"> <td> <button type="button" onclick="click_newgame()">New game</button> </td>
+</tr>
+<tr> <td style="text-align:right"> Difficulty: </td> <td> <select id="difficulty" onchange="change_difficulty()">
+  <option value="0">Easy</option>
+  <option value="1">Medium</option>
+  <option value="2">Hard</option>
+</select> </td>
+</tr>
+</table>
+</div>
 <script>
 
 // --------------------------------------------------------------------
 // Globals
 
 const config = {
-    color_outline  : "ff0000",
+    default_difficulty       : 1,
+    default_rows             : 3,
+    stone_border             : 2,
+
+    color_select             : "e0e000",
+    color_stone              : "a0a0a0",
+    color_field_border       : "103010",
+    color_field              : "30a020",
+    color_black              : "000000",
 };
 
 var _game = null;
@@ -178,21 +209,143 @@ console.log("too narrow! x="+x.toString()+", y="+y.toString()+", w="+w.toString(
 
 // --------------------------------------------------------------------
 
+class Stone {
+    constructor(x, y, rad) {
+        this.x = x;
+        this.y = y;
+        this.rad = rad;
+        this.selected = false;
+    }
+    is_in(x, y) {
+        const dx = x - this.x;
+        const dy = y - this.y;
+        return (dx*dx + dy*dy < this.rad*this.rad);
+    }
+    set_selected(selected) {
+        this.selected = selected;
+    }
+    click() {
+        this.selected = !this.selected;
+    }
+    draw(gfx) {
+        if (this.selected)
+            gfx.draw_circle(this.x, this.y, this.rad*1.3, config.color_select);
+        gfx.draw_circle(this.x, this.y, this.rad+config.stone_border, config.color_black);
+        gfx.draw_circle(this.x, this.y, this.rad, config.color_stone);
+    }
+}; // class Stone
+
+// --------------------------------------------------------------------
+
 class Game {
-    constructor(gfx) {
+    constructor(gfx, num_rows = 3, difficulty = -1) {
+        if (difficulty < 0) difficulty = config.default_difficulty;
         this.gfx = gfx;
+        this.set_rows(num_rows);
+        this.set_difficulty(difficulty);
+        this.set_status("Your move.<br>Select one or more stones from one row to remove.");
     }
     run() {
         this.draw();
     }
+    click_go() {
+        for (let row = 0; row < this.rows.length; ++row) {
+            const stones = this.rows[row];
+            for (let sindex = 0; sindex < stones.length; ++sindex) {
+                const stone = stones[sindex];
+                if (stone.selected) {
+                    stones.splice(sindex, 1);
+                    --sindex;
+                }
+            }
+        }
+        el("go_btn").disabled = true;
+        this.draw();
+        this.set_status("Computer is moving.<br>Please wait...");
+        
+    }
     event_mouse(down, x, y) {
+        if (!down) return;
+        const game = this;
+        this.for_each_stone(function(stone, row, sindex) {
+            if (!stone.is_in(x, y)) return false;
+            stone.click();
+            if (stone.selected) {
+                game.unselect_not_in_row(row);
+                el("go_btn").disabled = false;
+            } else if (game.num_selected() == 0) {
+                el("go_btn").disabled = true;
+            }
+            game.draw();
+            return true;
+        });
+    }
+    set_rows(num_rows) {
+        const canvas = this.gfx.ctx.canvas;
+        const cw = canvas.width;
+        const ch = canvas.height;
+        const sf = .7;
+        const row_h = Math.floor(ch / (num_rows + (num_rows+1)*sf));
+        const sp_w = row_h * .5;
+        const sp_h = row_h * sf;
+        const mid_h = ch / 2;
+        const mid_w = cw / 2;
+        const diam = row_h;
+        const rad = diam/2;
+
+        this.rows = [];
+        let y = mid_h - (row_h * num_rows + sp_h * (num_rows-1)) / 2;
+        let num_stones = 1;
+        for (let row = 0; row < num_rows; ++row) {
+            this.rows.push([]);
+            let x = mid_w - (row_h * num_stones + sp_w * (num_stones-1)) / 2;
+            for (let sindex = 0; sindex < num_stones; ++sindex) {
+                const stone = new Stone(x+rad, y+rad, rad);
+                this.rows[row].push(stone);
+                x += diam + sp_w;
+            }
+            y += row_h + sp_h;
+            num_stones += 2;
+        }
+    }
+    set_difficulty(difficulty) {
+        this.difficulty = difficulty;
+    }
+    set_status(status) {
+        el("status").innerHTML = status;
+    }
+    for_each_stone(fn) {
+        const num_rows = this.rows.length;
+        for (let row = 0; row < num_rows; ++row) {
+            const num_stones = this.rows[row].length;
+            for (let sindex = 0; sindex < num_stones; ++sindex) {
+                const stone = this.rows[row][sindex];
+                if (fn(stone, row, sindex)) return;
+            }
+        }
+    }
+    unselect_not_in_row(xrow) {
+        this.for_each_stone(function(stone, row, sindex) {
+            if (row == xrow) return;
+            stone.set_selected(false);
+        });
+    }
+    num_selected() {
+        let count = 0;
+        this.for_each_stone(function(stone, row, sindex) {
+            if (stone.selected) ++count;
+            return false;
+        });
+        return count;
     }
     draw() {
         const canvas = this.gfx.ctx.canvas;
-        const w = canvas.width;
-        const h = canvas.height;
-        const b = canvas.height / 20;
-        this.gfx.draw_outline(0, 0, w, h, b, b, config.color_outline);
+        const border = canvas.height * .03;
+        const gfx = this.gfx;
+        gfx.draw_outlined_rect(0, 0, canvas.width, canvas.height, border, border, config.color_field, config.color_field_border);
+        this.for_each_stone(function(stone, row, sindex) {
+            stone.draw(gfx);
+        });
     }
     static _event_mousedown(e) {
         if (_game != null) _game.event_mouse(true, e.offsetX, e.offsetY);
@@ -232,14 +385,36 @@ function canvas_size(name, w, h) {
 
 function canvas_resize() {
     const s = 20;
-    return canvas_size("canvas", window.innerWidth - s, window.innerHeight - s);
+    return canvas_size("canvas", window.innerWidth - s, window.innerHeight - el("post_canvas").clientHeight - s);
+}
+
+function click_go() {
+    if (_game == null) return;
+    _game.click_go();
+}
+function click_newgame() {
+    if (_game == null) return;
+    _game.click_newgame();
+}
+function change_rows() {
+    if (_game == null) return;
+    const rows = el("rows").selectedIndex + 1;
+    _game.set_rows(rows);
+    _game.draw();
+}
+function change_difficulty() {
+    if (_game == null) return;
+    const difficulty = el("difficulty").selectedIndex;
+    _game.set_difficulty(difficulty);
 }
 
 function main() {
     munge_config();
     const canvas = canvas_resize();
     const gfx = new Graphics(canvas.getContext("2d"), canvas.height*.026);
-    _game = new Game(gfx);
+    el("rows").selectedIndex = config.default_rows-1;
+    el("difficulty").selectedIndex = config.default_difficulty;
+    _game = new Game(gfx, config.default_rows);
     document.addEventListener('mousedown', Game._event_mousedown);
     document.addEventListener('mouseup', Game._event_mouseup);
     window.addEventListener('resize', canvas_resize, false);
