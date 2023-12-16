@@ -47,7 +47,7 @@
 // Globals
 
 const config = {
-    default_difficulty       : 1,
+    default_difficulty       : 2,
     default_rows             : 3,
     stone_border             : 2,
     computer_move_interval   : 700,
@@ -234,7 +234,10 @@ class Game {
         _game.next_computer_move();
     }
     get_move() {
-        let move = this.best_move();
+        let pct = (this.difficulty == 0) ? 50 : (this.difficulty == 1) ? 70 : 100;
+        let move = null;
+        if (randu(100) < pct)
+            move = this.best_move();
         if (move == null)
             move = this.random_move();
         return move;
@@ -276,7 +279,6 @@ class Game {
              if (this.rows[row].length > 0 && r-- == 0)
                  return row;
         }
-        console.log("cannot happen");
         return -1; // cannot happen
     }
     event_mouse(down, x, y) {
