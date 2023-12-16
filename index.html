@@ -12,11 +12,13 @@
 
 <canvas id="canvas" width="1" height="1" style="font-family:Arial"></canvas>
 
-<div id="post_canvas" style="text-align:center">
+<div id="post_canvas">
 
-<button type="button" id="go_btn" onclick="click_go()" disabled style="height:4em">Remove selected stones</button>
+<div style="text-align:center">
+<button type="button" id="go_btn" onclick="click_go()" disabled style="height:3em; border-radius:10px; font-size:large">&nbsp;Remove selected stones&nbsp;</button>
+</div>
 
-<table style="text-align:right">
+<table>
 <tr> <td> Rows: </td> <td> <select id="rows">
   <option value="1">1</option>
   <option value="2">2</option>
@@ -33,7 +35,7 @@
 </select> </td> </tr>
 <tr> <td> Type: </td> <td> <select id="misere">
   <option value="0">Normal</option>
-  <option value="1" selected="1">Misere</option>
+  <option value="1" selected="1">Misère</option>
 </select> </td> </tr>
 <tr> <td></td> <td> <button type="button" onclick="click_newgame()">New game</button> </td> </tr>
 </table>
@@ -181,12 +183,13 @@ class Game {
         this.draw();
     }
     click_go() {
+        if (this.computer_move != null) return;
         this.remove_selected(false);
         el("go_btn").disabled = true;
         this.draw();
         if (!this.playing) return;
         this.set_computer_status();
-        this.computer_move = this.best_move();
+        this.computer_move = this.get_move();
         if (this.computer_move != null) {
             this.computer_move_sindex = 0;
             window.setTimeout(Game._next_computer_move, config.computer_move_interval);
@@ -203,12 +206,12 @@ class Game {
                 }
             }
         }
-        if (this.board_empty())
+        if (!this.any_row_larger(0))
             this.game_over(computer_move);
     }
     game_over(computer_move) {
         this.playing = false;
-        if (computer_move)
+        if (computer_move == !this.misere)
             this.set_status("Game over.<br>Computer won.");
         else
             this.set_status("Game over.<br>You won.");
@@ -230,6 +233,12 @@ class Game {
         if (_game == null) return;
         _game.next_computer_move();
     }
+    get_move() {
+        let move = this.best_move();
+        if (move == null)
+            move = this.random_move();
+        return move;
+    }
     best_move() {
         let game_sum = 0;
         for (let row = 0; row < this.rows.length; ++row) {
@@ -237,11 +246,16 @@ class Game {
         }
         for (let row = 0; row < this.rows.length; ++row) {
             const row_len = this.rows[row].length;
-            const row_sum = this.nim_sum(game_sum, row_len);
+            let row_sum = this.nim_sum(game_sum, row_len);
             if (row_sum < row_len) {
+                if (this.misere && row_sum <= 1 && !this.any_row_larger(1, row))
+                    row_sum = 1-row_sum;
                 return { row: row, take: row_len-row_sum };
             }
         }
+        return null;
+    }
+    random_move() {
         // No winning move; make a random move.
         const row = this.rand_row();
         if (row < 0) return null;
@@ -266,6 +280,7 @@ class Game {
         return -1; // cannot happen
     }
     event_mouse(down, x, y) {
+        if (this.computer_move != null) return;
         if (!down) return;
         const game = this;
         this.for_each_stone(function(stone, row, sindex) {
@@ -335,12 +350,12 @@ class Game {
         });
         return count;
     }
-    board_empty() {
+    any_row_larger(max, skip_row = -1) {
         for (let row = 0; row < this.rows.length; ++row) {
-            if (this.rows[row].length > 0)
-                return false;
+            if (row != skip_row && this.rows[row].length > max)
+                return true;
         }
-        return true;
+        return false;
     }
     draw() {
         const canvas = this.gfx.ctx.canvas;
