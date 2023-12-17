@@ -49,6 +49,9 @@
 const config = {
     default_difficulty       : 2,
     default_rows             : 3,
+    pct_easy                 : 50,
+    pct_medium               : 70,
+    pct_hard                 : 100,
     stone_border             : 2,
     computer_move_interval   : 700,
 
@@ -234,7 +237,7 @@ class Game {
         _game.next_computer_move();
     }
     get_move() {
-        let pct = (this.difficulty == 0) ? 50 : (this.difficulty == 1) ? 70 : 100;
+        let pct = (this.difficulty == 0) ? config.pct_easy : (this.difficulty == 1) ? config.pct_medium : config.pct_hard;
         let move = null;
         if (randu(100) < pct)
             move = this.best_move();
@@ -256,16 +259,13 @@ class Game {
                 return { row: row, take: row_len-row_sum };
             }
         }
+        // There is no winning move.
         return null;
     }
     random_move() {
-        // No winning move; make a random move.
         const row = this.rand_row();
         if (row < 0) return null;
         return { row: row, take: 1+randu(this.rows[row].length) };
-    }
-    nim_sum(x, y) {
-        return (x ^ y);
     }
     rand_row() {
         let nonempty_rows = 0;
@@ -280,6 +280,9 @@ class Game {
                  return row;
         }
         return -1; // cannot happen
+    }
+    nim_sum(x, y) {
+        return (x ^ y);
     }
     event_mouse(down, x, y) {
         if (this.computer_move != null) return;
@@ -401,6 +404,7 @@ function canvas_size(name, w, h) {
     const canvas = el(name);
     canvas.width = w;
     canvas.height = h;
+    canvas.style.marginLeft = ((window.innerWidth - w) / 2).toString() + "px";
     return canvas;
 }
 
@@ -408,7 +412,7 @@ function canvas_resize() {
     const s = 20;
     const h1 = el("pre_canvas").clientHeight;
     const h2 = el("post_canvas").clientHeight;
-    return canvas_size("canvas", window.innerWidth - s, window.innerHeight - h1 - h2 - s);
+    return canvas_size("canvas", window.innerWidth * .9, window.innerHeight - h1 - h2 - s);
 }
 
 function click_go() {
@@ -436,4 +440,3 @@ function main() {
 </script>
 </body>
 </html>
-
