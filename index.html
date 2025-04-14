@@ -15,7 +15,7 @@
       padding: 20px;
       z-index: 999;
     }
-    .button {
+    .big_button {
       height:3em;
       border-radius:10px;
       font-size:large;
@@ -36,17 +36,17 @@
 <table style="width:100%">
 <tr style="text-align:left">
 <td> 
-<button type="button" onclick="click_newgame()">New game</button> 
+<button type="button" class="big_button" onclick="click_newgame()">New game</button> 
 </td>
 
 <td>
 <div style="text-align:center">
-<button type="button" class="button" id="go_btn" onclick="click_go()" disabled style="height:3em; border-radius:10px; font-size:large">&nbsp;Remove selected stones&nbsp;</button>
+<button type="button" class="big_button" id="go_btn" onclick="click_go()" disabled >&nbsp;Remove selected stones&nbsp;</button>
 </div>
 </td>
 
 <td style="text-align:right"> 
-<button type="button" onclick="click_settings()" style="text-align:right">Settings</button> 
+<button type="button" class="big_button" onclick="click_settings()" style="text-align:right">&#x2630;</button> 
 </td>
 </tr>
 </table>
