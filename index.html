@@ -3,6 +3,24 @@
 <html>
 <head>
 <title>Nim</title>
+<style>
+    #settings_panel {
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      padding: 20px;
+      z-index: 999;
+    }
+    .button {
+      height:3em;
+      border-radius:10px;
+      font-size:large;
+    }
+</style>
 </head>
 <body onload="main()">
 
@@ -14,10 +32,26 @@
 
 <div id="post_canvas">
 
-<div style="text-align:center">
-<button type="button" id="go_btn" onclick="click_go()" disabled style="height:3em; border-radius:10px; font-size:large">&nbsp;Remove selected stones&nbsp;</button>
-</div>
 
+<table style="width:100%">
+<tr style="text-align:left">
+<td> 
+<button type="button" onclick="click_newgame()">New game</button> 
+</td>
+
+<td>
+<div style="text-align:center">
+<button type="button" class="button" id="go_btn" onclick="click_go()" disabled style="height:3em; border-radius:10px; font-size:large">&nbsp;Remove selected stones&nbsp;</button>
+</div>
+</td>
+
+<td style="text-align:right"> 
+<button type="button" onclick="click_settings()" style="text-align:right">Settings</button> 
+</td>
+</tr>
+</table>
+
+<div id="settings_panel" style="display:none">
 <table>
 <tr> <td> Rows: </td> <td> <select id="rows">
   <option value="1">1</option>
@@ -37,7 +71,8 @@
   <option value="0">Normal</option>
   <option value="1" selected="1">Misère</option>
 </select> </td> </tr>
-<tr> <td></td> <td> <button type="button" onclick="click_newgame()">New game</button> </td> </tr>
+<tr> <td> 
+
 </table>
 </div>
 
@@ -338,6 +373,11 @@ function click_newgame() {
     const misere = el("misere").selectedIndex;
     _game = new Game(gfx, rows, diff, misere);
     _game.run();
+}
+function click_settings() {
+    const panel = el("settings_panel");
+    const disp = (panel.style.display != "none");
+    panel.style.display = disp ? "none" : "block";
 }
 
 function main() {
