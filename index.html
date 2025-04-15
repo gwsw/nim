@@ -125,10 +125,11 @@ class Stone {
         this.rad = rad;
         this.selected = false;
     }
-    is_in(x, y) {
-        const dx = x - this.x;
-        const dy = y - this.y;
-        return (dx*dx + dy*dy < this.rad*this.rad);
+    is_in(x, y, scale) {
+        const dx = x - this.x * scale;
+        const dy = y - this.y * scale;
+        const rad = this.rad * scale;
+        return (dx*dx + dy*dy < rad*rad);
     }
     set_selected(selected) {
         this.selected = selected;
@@ -137,9 +138,6 @@ class Stone {
         this.selected = !this.selected;
     }
     draw(gfx, scale) {
-if (scale != 1) {
-console.log("n");
-}
         const x = this.x * scale;
         const y = this.y * scale;
         const rad = this.rad * scale;
@@ -162,10 +160,8 @@ class Game {
         this.misere = misere;
         this.set_your_status();
         this.computer_move = null;
-        this.sized = false;
+        this.dscale = 1;
         this.playing = true;
-    }
-    resize() {
     }
     set_your_status() {
         this.set_status("Your move.<br>Select one or more stones from one row to remove.");
@@ -178,8 +174,8 @@ class Game {
     }
     click_go() {
         if (this.computer_move != null) return;
-        this.remove_selected(false);
         el("go_btn").disabled = true;
+        this.remove_selected(false);
         this.draw();
         if (!this.playing) return;
         this.set_computer_status();
@@ -280,7 +276,7 @@ class Game {
         if (!down) return;
         const game = this;
         this.for_each_stone(function(stone, row, sindex) {
-            if (!stone.is_in(x, y)) return false;
+            if (!stone.is_in(x, y, game.dscale)) return false;
             stone.click();
             if (stone.selected) {
                 game.unselect_not_in_row(row);
@@ -357,18 +353,15 @@ class Game {
     }
     draw() {
         const dims = this.gfx.canvas_dims();
-        if (!this.sized) {
-            this.resize(dims.w, dims.h);
-            this.sized = true;
-        }
         const border = dims.h * .03;
         const gfx = this.gfx;
         const xscale = dims.w / this.orig_cw;
         const yscale = dims.h / this.orig_ch;
-        const scale = Math.min(xscale, yscale);
+        const dscale = Math.min(xscale, yscale);
+        this.dscale = dscale;
         gfx.draw_outlined_rect(0, 0, dims.w, dims.h, border, border, config.color_field, config.color_field_border);
         this.for_each_stone(function(stone, row, sindex) {
-            stone.draw(gfx, scale);
+            stone.draw(gfx, dscale);
         });
     }
     static _event_mousedown(e) {
@@ -386,7 +379,7 @@ function canvas_size(name, w, h) {
     canvas.width = w;
     canvas.height = h;
     canvas.style.marginLeft = ((window.innerWidth - w) / 2).toString() + "px";
-    if (_game != null) _game.resize();
+    if (_game != null) _game.draw();
     return canvas;
 }
 
@@ -398,8 +391,7 @@ function canvas_resize() {
 }
 
 function click_go() {
-    if (_game == null) return;
-    _game.click_go();
+    if (_game != null) _game.click_go();
 }
 function click_newgame() {
     const gfx = new Graphics(canvas.getContext("2d"), canvas.height*.026);
