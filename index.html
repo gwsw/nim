@@ -332,8 +332,8 @@ class Game {
     }
     unselect_not_in_row(xrow) {
         this.for_each_stone(function(stone, row, sindex) {
-            if (row == xrow) return;
-            stone.set_selected(false);
+            if (row != xrow) stone.set_selected(false);
+            return false;
         });
     }
     num_selected() {
@@ -362,6 +362,7 @@ class Game {
         gfx.draw_outlined_rect(0, 0, dims.w, dims.h, border, border, config.color_field, config.color_field_border);
         this.for_each_stone(function(stone, row, sindex) {
             stone.draw(gfx, dscale);
+            return false;
         });
     }
     static _event_mousedown(e) {
