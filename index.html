@@ -20,12 +20,28 @@
       border-radius:10px;
       font-size:large;
     }
+    .med_button {
+      height:2em;
+      border-radius:8px;
+      font-size:medium;
+    }
 </style>
 </head>
 <body onload="main()">
 
 <div id="pre_canvas" style="font-size:2em; text-align:center">
+
+
+<table width="100%">
+<tr>
+<td width="15%">&nbsp;</td>
+<td>
 <p id="status" style="margin:0px">&nbsp;<br>&nbsp;</p>
+</td>
+<td width="15%" style="font-size:small">Nim 0.7</td>
+</tr>
+</table>
+
 </div>
 
 <canvas id="canvas" width="1" height="1" style="font-family:Arial"></canvas>
@@ -35,8 +51,8 @@
 
 <table style="width:100%">
 <tr style="text-align:left">
-<td> 
-<button type="button" class="big_button" onclick="click_newgame()">New game</button> 
+<td style="width:20%"> 
+<button type="button" class="med_button" onclick="click_newgame()">New game</button> 
 </td>
 
 <td>
@@ -45,8 +61,8 @@
 </div>
 </td>
 
-<td style="text-align:right"> 
-<button type="button" class="big_button" onclick="click_settings()" style="text-align:right">&#x2630;</button> 
+<td style="width:20%; text-align:right"> 
+<button type="button" class="med_button" onclick="click_settings()" style="text-align:right">Settings</button> 
 </td>
 </tr>
 </table>
