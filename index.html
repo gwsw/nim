@@ -85,7 +85,10 @@
   <option value="0">Normal</option>
   <option value="1" selected="1">Misère</option>
 </select> </td> </tr>
-<tr> <td colspan="2" style="text-align:center"> <button type="button" onclick="click_settings_ok()"> OK </button> </td> </tr>
+<tr> 
+<td> <button type="button" onclick="click_settings_cancel()"> Cancel </button> </td> 
+<td> <button type="button" onclick="click_settings_ok()"> New game </button> </td> 
+</tr>
 </table>
 </div>
 
@@ -427,6 +430,9 @@ function click_settings_ok() {
     if (!is_displayed(el("settings_panel"))) {
         click_newgame();
     }
+}
+function click_settings_cancel() {
+    click_settings();
 }
 function is_displayed(elt) {
     return (elt.style.display != "none");
