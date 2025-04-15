@@ -87,8 +87,7 @@
   <option value="0">Normal</option>
   <option value="1" selected="1">Misère</option>
 </select> </td> </tr>
-<tr> <td> 
-
+<tr> <td colspan="2" style="text-align:center"> <button type="button" onclick="click_settings_ok()"> OK </button> </td> </tr>
 </table>
 </div>
 
@@ -394,6 +393,10 @@ function click_settings() {
     const panel = el("settings_panel");
     const disp = (panel.style.display != "none");
     panel.style.display = disp ? "none" : "block";
+}
+function click_settings_ok() {
+    // If you understand this, you are truly one with the program.
+    click_settings();
 }
 
 function main() {
