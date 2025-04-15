@@ -136,11 +136,18 @@ class Stone {
     click() {
         this.selected = !this.selected;
     }
-    draw(gfx) {
+    draw(gfx, scale) {
+if (scale != 1) {
+console.log("n");
+}
+        const x = this.x * scale;
+        const y = this.y * scale;
+        const rad = this.rad * scale;
+
         if (this.selected)
-            gfx.draw_circle(this.x, this.y, this.rad*1.3, config.color_select);
-        gfx.draw_circle(this.x, this.y, this.rad+config.stone_border, config.color_black);
-        gfx.draw_circle(this.x, this.y, this.rad, config.color_stone);
+            gfx.draw_circle(x, y, rad*1.3, config.color_select);
+        gfx.draw_circle(x, y, rad+config.stone_border, config.color_black);
+        gfx.draw_circle(x, y, rad, config.color_stone);
     }
 }; // class Stone
 
@@ -156,6 +163,8 @@ class Game {
         this.set_your_status();
         this.computer_move = null;
         this.playing = true;
+    }
+    resize(cw, ch) {
     }
     set_your_status() {
         this.set_status("Your move.<br>Select one or more stones from one row to remove.");
@@ -309,6 +318,8 @@ class Game {
             y += row_h + sp_h;
             num_stones += 2;
         }
+        this.orig_cw = cw;
+        this.orig_ch = ch;
     }
     set_status(status) {
         el("status").innerHTML = status;
@@ -344,12 +355,15 @@ class Game {
         return false;
     }
     draw() {
-        const canvas = this.gfx.ctx.canvas;
-        const border = canvas.height * .03;
+        const dims = this.gfx.canvas_dims();
+        const border = dims.h * .03;
         const gfx = this.gfx;
-        gfx.draw_outlined_rect(0, 0, canvas.width, canvas.height, border, border, config.color_field, config.color_field_border);
+        const xscale = dims.w / this.orig_cw;
+        const yscale = dims.h / this.orig_ch;
+        const scale = Math.min(xscale, yscale);
+        gfx.draw_outlined_rect(0, 0, dims.w, dims.h, border, border, config.color_field, config.color_field_border);
         this.for_each_stone(function(stone, row, sindex) {
-            stone.draw(gfx);
+            stone.draw(gfx, scale);
         });
     }
     static _event_mousedown(e) {
@@ -367,6 +381,7 @@ function canvas_size(name, w, h) {
     canvas.width = w;
     canvas.height = h;
     canvas.style.marginLeft = ((window.innerWidth - w) / 2).toString() + "px";
+    if (_game != null) _game.resize(w, h);
     return canvas;
 }
 
