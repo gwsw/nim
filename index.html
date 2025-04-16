@@ -65,6 +65,7 @@
 </table>
 
 <div id="settings_panel" style="display:none">
+<h2><center>Settings</center></h2>
 <table>
 <tr> <td> Rows: </td> <td> <select id="rows">
   <option value="1">1</option>
@@ -84,6 +85,7 @@
   <option value="0">Normal</option>
   <option value="1" selected="1">Misère</option>
 </select> </td> </tr>
+<tr><td colspan="2">&nbsp;</td></tr>
 <tr> 
 <td> <button type="button" onclick="click_settings_cancel()"> Cancel </button> </td> 
 <td> <button type="button" onclick="click_settings_ok()"> New game </button> </td> 
@@ -99,13 +101,17 @@
 // Globals
 
 const config = {
+    border_frac              : .03,
+    computer_move_interval   : 700,
     default_difficulty       : 2,
     default_rows             : 3,
     pct_easy                 : 50,
     pct_medium               : 70,
     pct_hard                 : 100,
+    sel_hilite_frac          : 1.3,
     stone_border             : 2,
-    computer_move_interval   : 700,
+    x_sp_frac                : .5,
+    y_sp_frac                : .7,
 
     color_select             : "e0e000",
     color_stone              : "a0a0a0",
@@ -141,9 +147,8 @@ class Stone {
         const x = this.x * scale;
         const y = this.y * scale;
         const rad = this.rad * scale;
-
         if (this.selected)
-            gfx.draw_circle(x, y, rad*1.3, config.color_select);
+            gfx.draw_circle(x, y, rad*config.sel_hilite_frac, config.color_select);
         gfx.draw_circle(x, y, rad+config.stone_border, config.color_black);
         gfx.draw_circle(x, y, rad, config.color_stone);
     }
@@ -219,10 +224,6 @@ class Game {
         }
         this.draw();
     }
-    static _next_computer_move() {
-        if (_game == null) return;
-        _game.next_computer_move();
-    }
     get_move() {
         let pct = (this.difficulty == 0) ? config.pct_easy : (this.difficulty == 1) ? config.pct_medium : config.pct_hard;
         let move = null;
@@ -235,11 +236,11 @@ class Game {
     best_move() {
         let game_sum = 0;
         for (let row = 0; row < this.rows.length; ++row) {
-            game_sum = this.nim_sum(game_sum, this.rows[row].length);
+            game_sum = Game.nim_sum(game_sum, this.rows[row].length);
         }
         for (let row = 0; row < this.rows.length; ++row) {
             const row_len = this.rows[row].length;
-            let row_sum = this.nim_sum(game_sum, row_len);
+            let row_sum = Game.nim_sum(game_sum, row_len);
             if (row_sum < row_len) {
                 if (this.misere && row_sum <= 1 && !this.any_row_larger(1, row))
                     row_sum = 1-row_sum;
@@ -260,15 +261,16 @@ class Game {
              if (this.rows[row].length > 0)
                  ++nonempty_rows;
         }
-        if (nonempty_rows == 0) return -1;
-        let r = randu(nonempty_rows);
-        for (let row = 0; row < this.rows.length; ++row) {
-             if (this.rows[row].length > 0 && r-- == 0)
-                 return row;
+        if (nonempty_rows > 0) {
+            let r = randu(nonempty_rows);
+            for (let row = 0; row < this.rows.length; ++row) {
+                 if (this.rows[row].length > 0 && r-- == 0)
+                     return row;
+            }
         }
-        return -1; // cannot happen
+        return -1;
     }
-    nim_sum(x, y) {
+    static nim_sum(x, y) {
         return (x ^ y);
     }
     event_mouse(down, x, y) {
@@ -292,10 +294,9 @@ class Game {
         const canvas = this.gfx.ctx.canvas;
         const cw = canvas.width;
         const ch = canvas.height;
-        const sf = .7;
-        const row_h = Math.floor(ch / (num_rows + (num_rows+1)*sf));
-        const sp_w = row_h * .5;
-        const sp_h = row_h * sf;
+        const row_h = Math.floor(ch / (num_rows + (num_rows+1)*config.y_sp_frac));
+        const sp_w = row_h * config.x_sp_frac;
+        const sp_h = row_h * config.y_sp_frac;
         const mid_h = ch / 2;
         const mid_w = cw / 2;
         const diam = row_h;
@@ -353,7 +354,7 @@ class Game {
     }
     draw() {
         const dims = this.gfx.canvas_dims();
-        const border = dims.h * .03;
+        const border = dims.h * config.border_frac;
         const gfx = this.gfx;
         const xscale = dims.w / this.orig_cw;
         const yscale = dims.h / this.orig_ch;
@@ -365,11 +366,15 @@ class Game {
             return false;
         });
     }
+
     static _event_mousedown(e) {
         if (_game != null) _game.event_mouse(true, e.offsetX, e.offsetY);
     }
     static _event_mouseup(e) {
         if (_game != null) _game.event_mouse(false, e.offsetX, e.offsetY);
+    }
+    static _next_computer_move() {
+        if (_game != null) _game.next_computer_move();
     }
 }; // class Game
 
